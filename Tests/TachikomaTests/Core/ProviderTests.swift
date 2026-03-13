@@ -2,6 +2,37 @@ import Foundation
 import Testing
 @testable import Tachikoma
 
+private func withTemporaryEnvironment<T: Sendable>(
+    _ updates: [String: String?],
+    _ body: @Sendable () throws -> T,
+) async rethrows -> T {
+    try await TestEnvironmentMutex.shared.withLock {
+        let saved = updates.keys.map { key in
+            (key, getenv(key).map { String(cString: $0) })
+        }
+
+        for (key, value) in updates {
+            if let value {
+                setenv(key, value, 1)
+            } else {
+                unsetenv(key)
+            }
+        }
+
+        defer {
+            for (key, value) in saved {
+                if let value {
+                    setenv(key, value, 1)
+                } else {
+                    unsetenv(key)
+                }
+            }
+        }
+
+        return try body()
+    }
+}
+
 @Suite("Provider Enum Tests")
 struct ProviderTests {
     @Suite("Provider Properties Tests")
@@ -53,10 +84,7 @@ struct ProviderTests {
         @Test("Alternative environment variables")
         func alternativeEnvironmentVariables() {
             #expect(Provider.grok.alternativeEnvironmentVariables == ["XAI_API_KEY"])
-            #expect(Provider.google.alternativeEnvironmentVariables == [
-                "GOOGLE_API_KEY",
-                "GOOGLE_APPLICATION_CREDENTIALS",
-            ])
+            #expect(Provider.google.alternativeEnvironmentVariables == ["GOOGLE_API_KEY"])
             #expect(Provider.openai.alternativeEnvironmentVariables.isEmpty)
             #expect(Provider.anthropic.alternativeEnvironmentVariables.isEmpty)
             #expect(Provider.azureOpenAI.alternativeEnvironmentVariables == [
@@ -168,6 +196,19 @@ struct ProviderTests {
             let customProvider = Provider.custom("test")
             #expect(customProvider.environmentVariable.isEmpty)
             #expect(customProvider.alternativeEnvironmentVariables.isEmpty)
+        }
+
+        @Test("Google ignores ADC credential paths as API keys")
+        func googleIgnoresADCCredentialPaths() async throws {
+            let resolved = await withTemporaryEnvironment([
+                "GEMINI_API_KEY": nil,
+                "GOOGLE_API_KEY": nil,
+                "GOOGLE_APPLICATION_CREDENTIALS": "/tmp/fake-google-adc.json",
+            ]) {
+                Provider.google.loadAPIKeyFromEnvironment()
+            }
+
+            #expect(resolved == nil)
         }
     }
 

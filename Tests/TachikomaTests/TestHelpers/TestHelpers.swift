@@ -19,8 +19,7 @@ enum TestHelpers {
         }
         let config = TachikomaConfiguration(loadFromEnvironment: false)
         for (provider, key) in apiKeys {
-            let resolved = self.resolve(provider: provider, provided: key)
-            config.setAPIKey(resolved, for: provider)
+            config.setAPIKey(key, for: provider)
         }
         if enableMockOverride {
             self.configureTestBehavior(for: config, apiKeys: apiKeys)
@@ -166,12 +165,12 @@ enum TestHelpers {
 
     private static func makeStandardTestKeys() -> [String: String] {
         [
-            "openai": self.resolve(provider: "openai", provided: "test-key"),
-            "anthropic": self.resolve(provider: "anthropic", provided: "test-key"),
-            "grok": self.resolve(provider: "grok", provided: "test-key"),
-            "groq": self.resolve(provider: "groq", provided: "test-key"),
-            "mistral": self.resolve(provider: "mistral", provided: "test-key"),
-            "google": self.resolve(provider: "google", provided: "test-key"),
+            "openai": "test-key",
+            "anthropic": "test-key",
+            "grok": "test-key",
+            "groq": "test-key",
+            "mistral": "test-key",
+            "google": "test-key",
         ]
     }
 
@@ -179,39 +178,6 @@ enum TestHelpers {
     static func isMockAPIKey(_ key: String?) -> Bool {
         guard let key, !key.isEmpty else { return true }
         return key == "test-key"
-    }
-
-    private static func resolve(provider: String, provided: String) -> String {
-        if provided != "test-key" {
-            return provided
-        }
-
-        let env = ProcessInfo.processInfo.environment
-        for name in self.environmentVariables(for: provider) {
-            if let value = env[name], !value.isEmpty {
-                return value
-            }
-        }
-        return provided
-    }
-
-    private static func environmentVariables(for provider: String) -> [String] {
-        switch provider.lowercased() {
-        case "openai":
-            ["OPENAI_API_KEY"]
-        case "anthropic":
-            ["ANTHROPIC_API_KEY"]
-        case "grok":
-            ["XAI_API_KEY", "X_AI_API_KEY", "GROK_API_KEY"]
-        case "groq":
-            ["GROQ_API_KEY"]
-        case "mistral":
-            ["MISTRAL_API_KEY"]
-        case "google":
-            ["GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_APPLICATION_CREDENTIALS"]
-        default:
-            []
-        }
     }
 
     private static func configureTestBehavior(for config: TachikomaConfiguration, apiKeys: [String: String]) {
