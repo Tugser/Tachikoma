@@ -293,7 +293,9 @@ struct TypeConversionTests {
 
         // Resource content
         let resourceResponse = ToolResponse(content: [
-            .resource(uri: "https://example.com", mimeType: "text/html", text: "content"),
+            .resource(
+                resource: .text("content", uri: "https://example.com", mimeType: "text/html")
+            ),
         ])
         let resourceVal = resourceResponse.toAnyAgentToolValue()
         if let props = resourceVal.objectValue {
@@ -303,6 +305,27 @@ struct TypeConversionTests {
             #expect(props["text"]?.stringValue == "content")
         } else {
             Issue.record("Expected object for resource content")
+        }
+
+        let resourceLinkResponse = ToolResponse(content: [
+            .resourceLink(
+                uri: "file:///tmp/test.txt",
+                name: "test.txt",
+                title: "Test File",
+                description: "Fixture",
+                mimeType: "text/plain"
+            ),
+        ])
+        let resourceLinkVal = resourceLinkResponse.toAnyAgentToolValue()
+        if let props = resourceLinkVal.objectValue {
+            #expect(props["type"]?.stringValue == "resourceLink")
+            #expect(props["uri"]?.stringValue == "file:///tmp/test.txt")
+            #expect(props["name"]?.stringValue == "test.txt")
+            #expect(props["title"]?.stringValue == "Test File")
+            #expect(props["description"]?.stringValue == "Fixture")
+            #expect(props["mimeType"]?.stringValue == "text/plain")
+        } else {
+            Issue.record("Expected object for resource link content")
         }
     }
 
